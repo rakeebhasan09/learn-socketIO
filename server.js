@@ -23,6 +23,10 @@ const io = new Server(server, {
 
 io.on("connection", (socket) => {
     console.log("a user connected", socket.id);
+    socket.emit("connected", { message: `user ${socket.id} connected` });
+
+    //For handling the orders
+    orderHandler(io, socket);
 });
 
 // Middleware
