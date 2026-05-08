@@ -30,3 +30,50 @@ export function generateOrderId() {
         .padStart(3, "0"); // Random number to ensure uniqueness
     return `ORD-${year}${month}${day}-${random}`;
 }
+
+// Helper function to Calculate total price of an order
+export function calculateTotal(items) {
+    const subTotal = items.reduce((sum, item) => {
+        return sum + item.price * item.quantity;
+    }, 0);
+    const tax = subTotal * 0.1; // Assuming 10% tax
+    const deliveryFee = 45.0; // Flat delivery fee
+    const total = subTotal + tax + deliveryFee;
+
+    return {
+        subTotal: Math.round(subTotal * 100) / 100,
+        tax: Math.round(tax * 100) / 100,
+        deliveryFee,
+        total: Math.round(total * 100) / 100,
+    };
+}
+
+// Helper function to create order document
+export function createOrderDocument(orderData, orderId, totals) {
+    return {
+        orderId,
+        customerName: orderData.customerName.trim(),
+        customerPhone: orderData.customerPhone.trim(),
+        customerAddress: orderData.customerAddress.trim(),
+        items: orderData.items,
+        subTotal: totals.subTotal,
+        tax: totals.tax,
+        deliveryFee: totals.deliveryFee,
+        totalAmount: totals.total,
+        specialNotes: orderData.specialNotes?.trim() || "",
+        paymentMethod: orderData.paymentMethod || "Cash on Delivery",
+        paymentStatus: "pending",
+        status: "pending",
+        statusHistory: [
+            {
+                status: "pending",
+                timestamp: new Date(),
+                by: "customer",
+                note: "Order placed",
+            },
+        ],
+        estimatedTime: null, // To be calculated by the system
+        createdAt: new Date(),
+        updatedAt: new Date(),
+    };
+}
