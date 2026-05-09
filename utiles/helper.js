@@ -77,3 +77,17 @@ export function createOrderDocument(orderData, orderId, totals) {
         updatedAt: new Date(),
     };
 }
+
+// Helper function for update order status
+export function isValidStatusTransition(currentStatus, newStatus) {
+    const validTransitions = {
+        pending: ["preparing", "cancelled"],
+        confirmed: ["preparing", "cancelled"],
+        preparing: ["ready", "cancelled"],
+        ready: ["out_for_delivery", "cancelled"],
+        out_for_delivery: ["delivered", "cancelled"],
+        delivered: [],
+        cancelled: [],
+    };
+    return validTransitions[currentStatus]?.includes(newStatus) || false;
+}

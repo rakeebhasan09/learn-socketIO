@@ -75,4 +75,65 @@ export const orderHandler = (io, socket) => {
             });
         }
     });
+
+    // Cancel Order
+    socket.on("cancelOrder", async (data, callback) => {
+        try {
+            const ordersCollection = getCollection("orders");
+            const order = await ordersCollection.findOne({
+                orderId: data.orderId,
+            });
+
+            // If order is not found
+            if (!order) {
+                return callback({
+                    success: false,
+                    message: "Order not found",
+                });
+            }
+
+            if (!["pending", "confirmed"].includes(order.status)) {
+                return callback({
+                    success: false,
+                    message: "Can not cancel the order.",
+                });
+            }
+
+            await ordersCollection.updateOne(
+                { orderId: data.orderId },
+                {
+                    $set: {
+                        status: "cancelled",
+                        updatedAt: new Date(),
+                    },
+                    $push: {
+                        statusHistory: {
+                            status: "cancelled",
+                            timestamp: new Date(),
+                            by: socket.id,
+                            note: data.reason || "Order cancelled by customer",
+                        },
+                    },
+                },
+            );
+
+            io.to(`order-${data.orderId}`).emit("orderCancelled", {
+                orderId: data.orderId,
+            });
+            io.to("admins").emit("orderCancelled", {
+                orderId: data.orderId,
+                customerName: order.customerName,
+            });
+
+            callback({
+                success: true,
+            });
+        } catch (error) {
+            console.error("Error canceling order:", error);
+            callback({
+                success: false,
+                message: error.message || "Failed to cancel order",
+            });
+        }
+    });
 };
