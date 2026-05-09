@@ -47,4 +47,32 @@ export const orderHandler = (io, socket) => {
             });
         }
     });
+
+    // Track Order
+    socket.on("trackOrder", async (data, callback) => {
+        try {
+            const ordersCollection = getCollection("orders");
+            const order = await ordersCollection.findOne({
+                orderId: data.orderId,
+            });
+            if (!order) {
+                return callback({
+                    success: false,
+                    message: "Order not found",
+                });
+            }
+
+            socket.join(`order-${data.orderId}`);
+            callback({
+                success: true,
+                order,
+            });
+        } catch (error) {
+            console.error("Error tracking order:", error);
+            callback({
+                success: false,
+                message: error.message || "Failed to track order",
+            });
+        }
+    });
 };
