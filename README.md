@@ -105,7 +105,7 @@ mongodb+srv://ordertracking_user:<password>@cluster0.xxxxx.mongodb.net/?retryWri
     cp .env.example .env
     ```
 
-2. Edit `.env` file:
+2. Edit `.env` file:-
 
     ```env
     PORT=5000
