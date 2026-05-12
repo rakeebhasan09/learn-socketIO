@@ -136,4 +136,29 @@ export const orderHandler = (io, socket) => {
             });
         }
     });
+
+    // Get All My Orders
+    socket.on("getMyOrders", async (data, callback) => {
+        try {
+            const ordersCollection = getCollection("orders");
+            const orders = await ordersCollection
+                .find({
+                    customerPhone: data.customerPhone,
+                })
+                .sort({ createdAt: -1 })
+                .limit(20)
+                .toArray();
+
+            callback({
+                success: true,
+                orders,
+            });
+        } catch (error) {
+            console.error("Get orders error:", error);
+            callback({
+                success: false,
+                message: error.message || "Failed to get orders",
+            });
+        }
+    });
 };
