@@ -3,6 +3,7 @@ import {
     calculateTotal,
     createOrderDocument,
     generateOrderId,
+    isValidStatusTransition,
 } from "../utiles/helper.js";
 
 export const orderHandler = (io, socket) => {
@@ -216,6 +217,74 @@ export const orderHandler = (io, socket) => {
             callback({
                 success: false,
                 message: error.message || "Failed to get all orders",
+            });
+        }
+    });
+
+    // Update Order Status (Admin)
+    socket.on("updateOrderStatus", async (data, callback) => {
+        try {
+            const ordersCollection = getCollection("orders");
+            const order = await ordersCollection.findOne({
+                orderId: data.orderId,
+            });
+            if (!order) {
+                return callback({
+                    success: false,
+                    message: "Order not found",
+                });
+            }
+
+            if (!isValidStatusTransition(order.status, data.newStatus)) {
+                return callback({
+                    success: false,
+                    message: `Invalid status transition from ${order.status} to ${data.newStatus}`,
+                });
+            }
+
+            const result = await ordersCollection.findOneAndUpdate(
+                {
+                    orderId: data.orderId,
+                },
+                {
+                    $set: {
+                        status: data.newStatus,
+                        updatedAt: new Date(),
+                    },
+                    $push: {
+                        statusHistory: {
+                            status: data.newStatus,
+                            timestamp: new Date(),
+                            by: socket.id,
+                            note:
+                                data.note ||
+                                `Status changed to ${data.newStatus} by admin`,
+                        },
+                    },
+                },
+                { returnDocument: "after" },
+            );
+
+            io.to(`order-${data.orderId}`).emit("orderStatusUpdated", {
+                orderId: data.orderId,
+                status: data.newStatus,
+                order: result,
+            });
+
+            socket.to("admin").emit("orderStatusChanged", {
+                orderId: data.orderId,
+                newStatus: data.newStatus,
+            });
+
+            callback({
+                success: true,
+                order: result,
+            });
+        } catch (error) {
+            console.error("Update order status error:", error);
+            callback({
+                success: false,
+                message: error.message || "Failed to update order status",
             });
         }
     });
