@@ -288,4 +288,72 @@ export const orderHandler = (io, socket) => {
             });
         }
     });
+
+    // Accept Order (Admin)
+    socket.on("acceptOrder", async (data, callback) => {
+        try {
+            if (!socket.isAdmin) {
+                return callback({
+                    success: false,
+                    message: "Unauthorized",
+                });
+            }
+
+            const ordersCollection = getCollection("orders");
+            const order = await ordersCollection.findOne({
+                orderId: data.orderId,
+            });
+
+            if (!order || order.status !== "pending") {
+                return callback({
+                    success: false,
+                    message: "Order not found or cannot be accepted",
+                });
+            }
+
+            const estimatedTime = data.estimatedTime || 30;
+            const result = await ordersCollection.findOneAndUpdate(
+                {
+                    orderId: data.orderId,
+                },
+                {
+                    $set: {
+                        status: "confirmed",
+                        estimatedTime,
+                        updatedAt: new Date(),
+                    },
+                    $push: {
+                        statusHistory: {
+                            status: "confirmed",
+                            timestamp: new Date(),
+                            by: socket.id,
+                            note: `Order accepted with estimated time ${estimatedTime} mins`,
+                        },
+                    },
+                },
+                { returnDocument: "after" },
+            );
+
+            oi.to(`order-${data.orderId}`).emit("orderAccepted", {
+                orderId: data.orderId,
+                estimatedTime,
+            });
+
+            socket.to("admins").emit("orderAcceptedByAdmin", {
+                orderId: data.orderId,
+                estimatedTime,
+            });
+
+            callback({
+                success: true,
+                order: result,
+            });
+        } catch (error) {
+            console.error("Accept order error:", error);
+            callback({
+                success: false,
+                message: error.message || "Failed to accept order",
+            });
+        }
+    });
 };
