@@ -161,4 +161,31 @@ export const orderHandler = (io, socket) => {
             });
         }
     });
+
+    // Admin Event Start Here
+    // Admin Login
+    socket.on("adminLogin", (data, callback) => {
+        try {
+            if (data.password === process.env.ADMIN_PASSWORD) {
+                socket.isAdmin = true;
+                socket.join("admins");
+                console.log(`Admin logged in: ${socket.id}`);
+                callback({
+                    success: true,
+                    message: "Admin login successful",
+                });
+            } else {
+                callback({
+                    success: false,
+                    message: "Invalid password",
+                });
+            }
+        } catch (error) {
+            console.error("Admin login error:", error);
+            callback({
+                success: false,
+                message: error.message || "Admin login failed",
+            });
+        }
+    });
 };
