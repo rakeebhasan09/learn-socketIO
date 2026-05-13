@@ -188,4 +188,35 @@ export const orderHandler = (io, socket) => {
             });
         }
     });
+
+    // Get All Orders (Admin)
+    socket.on("getAllOrders", async (data, callback) => {
+        try {
+            if (!socket.isAdmin) {
+                return callback({
+                    success: false,
+                    message: "Unauthorized",
+                });
+
+                const ordersCollection = getCollection("orders");
+                const filter = data?.status ? { status: data.status } : {};
+                const orders = await ordersCollection
+                    .find(filter)
+                    .sort({ createdAt: -1 })
+                    .limit(20)
+                    .toArray();
+
+                callback({
+                    success: true,
+                    orders,
+                });
+            }
+        } catch (error) {
+            console.error("Get all orders error:", error);
+            callback({
+                success: false,
+                message: error.message || "Failed to get all orders",
+            });
+        }
+    });
 };
