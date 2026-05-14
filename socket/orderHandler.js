@@ -421,4 +421,57 @@ export const orderHandler = (io, socket) => {
             });
         }
     });
+
+    // Get Live Stats
+    socket.on("getLiveStats", async (data, callback) => {
+        try {
+            if (!socket.isAdmin) {
+                return callback({
+                    success: false,
+                    message: "Unauthorized",
+                });
+            }
+            const ordersCollection = getCollection("orders");
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const stats = {
+                totalToday: await ordersCollection.countDocuments({
+                    createdAt: { $gte: today },
+                }),
+                pending: await ordersCollection.countDocuments({
+                    status: "pending",
+                }),
+                confirmed: await ordersCollection.countDocuments({
+                    status: "confirmed",
+                }),
+                preparing: await ordersCollection.countDocuments({
+                    status: "preparing",
+                }),
+                ready: await ordersCollection.countDocuments({
+                    status: "ready",
+                }),
+                outForDelivery: await ordersCollection.countDocuments({
+                    status: "out_for_delivery",
+                }),
+                delivered: await ordersCollection.countDocuments({
+                    status: "delivered",
+                }),
+                cancelled: await ordersCollection.countDocuments({
+                    status: "cancelled",
+                }),
+            };
+
+            callback({
+                success: true,
+                stats,
+            });
+        } catch (error) {
+            console.error("Get live stats error:", error);
+            callback({
+                success: false,
+                message: error.message || "Failed to get live stats",
+            });
+        }
+    });
 };
