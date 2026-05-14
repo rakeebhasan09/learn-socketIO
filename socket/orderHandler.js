@@ -339,7 +339,7 @@ export const orderHandler = (io, socket) => {
                 estimatedTime,
             });
 
-            socket.to("admins").emit("orderAcceptedByAdmin", {
+            socket.on("admins").emit("orderAcceptedByAdmin", {
                 orderId: data.orderId,
                 estimatedTime,
             });
@@ -353,6 +353,71 @@ export const orderHandler = (io, socket) => {
             callback({
                 success: false,
                 message: error.message || "Failed to accept order",
+            });
+        }
+    });
+
+    // Reject Order (Admin)
+    socket.on("rejectOrder", async (data, callback) => {
+        try {
+            if (!socket.isAdmin) {
+                return callback({
+                    success: false,
+                    message: "Unauthorized",
+                });
+            }
+
+            const ordersCollection = getCollection("orders");
+            const order = await ordersCollection.findOne({
+                orderId: data.orderId,
+            });
+
+            if (!order || order.status !== "pending") {
+                return callback({
+                    success: false,
+                    message: "Order not found or cannot be rejected",
+                });
+            }
+
+            const result = await ordersCollection.findOneAndUpdate(
+                {
+                    orderId: data.orderId,
+                },
+                {
+                    $set: {
+                        status: "cancelled",
+                        estimatedTime,
+                        updatedAt: new Date(),
+                    },
+                    $push: {
+                        statusHistory: {
+                            status: "cancelled",
+                            timestamp: new Date(),
+                            by: socket.id,
+                            note: "Rejected by admin",
+                        },
+                    },
+                },
+                { returnDocument: "after" },
+            );
+
+            oi.to(`order-${data.orderId}`).emit("orderRejected", {
+                orderId: data.orderId,
+                reason: data.reason || "Order rejected by admin",
+            });
+
+            socket.on("admins").emit("orderRejectedByAdmin", {
+                reason: data.reason || "Order rejected by admin",
+            });
+
+            callback({
+                success: true,
+            });
+        } catch (error) {
+            console.error("Reject order error:", error);
+            callback({
+                success: false,
+                message: error.message || "Failed to reject order",
             });
         }
     });
